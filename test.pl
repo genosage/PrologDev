@@ -17,3 +17,6 @@ F is N * FF.
 take(N, List, Front):-
 length(Front,N),
 append(Front,_,List).
+
+test(X,Y):-
+Y is X * X.
