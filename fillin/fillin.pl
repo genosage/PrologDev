@@ -1,250 +1,273 @@
-% COMP30020 Declarative Programming - Project 2
-% Name: Zeyu Ye (290159)
-% This file is the main file for Project2-Puzzle Filling of COMP30020 
-% Delcarative Programming, it will read and parse a PuzzleFile and 
-% a WordlistFile, then it will generate an output SolutionFile (If all words,
-% in the solution file can be all filled in the blank spot of the puzzle file).
-% eg.
-% PuzzleFile 
-% #_#
-% ___
-% #_#
-% WordlistFile
-% HEL
-% EEL
-% SolutionFile
-% #E#
-% HEL
-% #L#
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+% Title:   COMP90048 Declarative Programming - Project 2                        %
+%                                                                               %
+% Author:  Tian Zhang (735882)                                                  %
+%                                                                               %
+% Purpose: This file is to solve the fillin crossword puzzles. It can           %
+%          read a puzzle file whose name is PuzzleFile and a word list          %
+%          file whose name is WordListFile, generate a solution of the          %
+%          puzzle, and print out the result to the file SolutionFile.           %
+%                                                                               %
+%          The puzzle file is a rectangle which contains some lines each        %
+%          with the same numbe of characters. The characters in this file       %
+%          should be either an underline ('_'), a hash ('#'), or a letter       %
+%          or digit. The SolutionFile has the same format, and the underlines   %
+%          are filled. The WordListFile is a text file with one word per line.  %
+%                                                                               %
+% Eg.:     PuzzleFile                                                           %
+%          ____                                                                 %
+%          a__#                                                                 %
+%          ____                                                                 %
+%                                                                               %
+%          WordListFile                                                         %
+%          boat                                                                 %
+%          art                                                                  %
+%          need                                                                 %
+%          ban                                                                  %
+%          ore                                                                  %
+%          ate                                                                  %
+%                                                                               %
+%          SolutionFile                                                         %
+%          boat                                                                 %
+%          art#                                                                 %
+%          need                                                                 %
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                               Main Predicate                               %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% This line ensures that the correct transpose predicate is loaded.
 :- ensure_loaded(library(clpfd)).
 
-% main function that parses the puzzlefile, wordlistfile and produces output to
-% solutionfile
-main(PuzzleFile, WordlistFile, SolutionFile) :-
-	read_file(PuzzleFile, Puzzle),
-	read_file(WordlistFile, Wordlist),
-	valid_puzzle(Puzzle),
-	solve_puzzle(Puzzle, Wordlist, Solved),
-	print_puzzle(SolutionFile, Solved).
 
-% function that reads a file and convert to a list of strings in Content
+% This predicate reads the PuzzleFile and WordListFile, solve the puzzle,
+% and print the solution to the SolutionFile.
+main(PuzzleFile, WordListFile, SolutionFile) :-
+    read_file(PuzzleFile, Puzzle),
+    read_file(WordListFile, WordList),
+    valid_puzzle(Puzzle),
+    solve_puzzle(Puzzle, WordList, Solved),
+    print_puzzle(SolutionFile, Solved).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                I/O Predicates                              %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% This predicate reads a file, and convert the content to a list.
 read_file(Filename, Content) :-
-	open(Filename, read, Stream),
-	read_lines(Stream, Content),
-	close(Stream).
+    open(Filename, read, Stream),
+    read_lines(Stream, Content),
+    close(Stream).
 
-% function that reads input stream line by line
+
+% This predicate reads a stream line by line, and convert the content
+% to a list.
 read_lines(Stream, Content) :-
-	read_line(Stream, Line, Last),
-	(   Last = true
-	->  (   Line = []
-	    ->  Content = []
-	    ;   Content = [Line]
-	    )
-	;  Content = [Line|Content1],
-	    read_lines(Stream, Content1)
-	).
+    read_line(Stream, Line, Last),
+    (   Last = true
+    ->  (   Line = []
+        ->  Content = []
+        ;   Content = [Line]
+        )
+    ;   Content = [Line|Content1],
+        read_lines(Stream, Content1)
+    ).
 
-% function that reads the first line of input stream
+
+% This predicate reads a line from the stream, and convert the content
+% to a list.
 read_line(Stream, Line, Last) :-
-	get_char(Stream, Char),
-	(   Char = end_of_file
-	->  Line = [],
-	    Last = true
-	; Char = '\n'
-	->  Line = [],
-	    Last = false
-	;   Line = [Char|Line1],
-	    read_line(Stream, Line1, Last)
-	).
+    get_char(Stream, Char),
+    (   Char = end_of_file
+    ->  Line = [],
+        Last = true
+    ;   Char = '\n'
+    ->  Line = [],
+        Last = false
+    ;   Line = [Char|Line1],
+        read_line(Stream, Line1, Last)
+    ).
 
-% function that prints the puzzle to the solution file
+
+% This predicate prints out the solution to the SolutionFile.
 print_puzzle(SolutionFile, Puzzle) :-
-	open(SolutionFile, write, Stream),
-	maplist(print_row(Stream), Puzzle),
-	close(Stream).
-% functions that prints a line to a Stream output
+    open(SolutionFile, write, Stream),
+    maplist(print_row(Stream), Puzzle),
+    close(Stream).
+
+% This predicate prints a line to the stream.
 print_row(Stream, Row) :-
-	maplist(put_puzzle_char(Stream), Row),
-	nl(Stream).
+    maplist(put_puzzle_char(Stream), Row),
+    nl(Stream).
 
-% function that prints a character to a Stream output
+
+% This predicate prints a character to the stream.
 put_puzzle_char(Stream, Char) :-
-	(   var(Char)
-	->  put_char(Stream, '_')
-	;   put_char(Stream, Char)
-	).
+    (   var(Char)
+    ->  put_char(Stream, '_')
+    ;   put_char(Stream, Char)
+    ).
 
-% checks if the puzzle is a valid puzzle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                          Puzzle Slover Predicate                           %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% This predicate takes an unfilled puzzle, replaces the underlines to unbound
+% variables, and convert the replaced puzzle to a list of slots. Each time, a
+% best slot is selected from the slots list, and the best slot will be filled
+% with the word from the word list, this process goes on until both the slots 
+% list and the word list are empty.
+solve_puzzle(Puzzle, WordList, Solved) :-
+    puzzle_to_puzzlelist(Puzzle, Solved),
+    puzzlelist_to_slotslist(Solved, SlotsList),
+    fillin(SlotsList, WordList).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                          Conversion Predicates                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% This predicate takes a puzzle, replaces the underlines to unbound variables,
+% and save it in a list.
+puzzle_to_puzzlelist([], []).
+puzzle_to_puzzlelist([Row|Rows], [PuzzleLine|PuzzleList]) :-
+    row_to_puzzlelist(Row, PuzzleLine),
+    puzzle_to_puzzlelist(Rows, PuzzleList).
+
+
+% This predicate takes a line of the puzzle, replaces the underlines to unbound
+% variables, and save it in a list.
+row_to_puzzlelist([], []).
+row_to_puzzlelist([Char|Chars], [Var|Vars]) :-
+    char_to_var(Char, Var),
+    row_to_puzzlelist(Chars, Vars).
+
+
+% This predicate can convert an underline character ('_') to an unbound variable,
+% the hash character ('#') and letters or digits are unchanged.
+char_to_var(Char, Var) :-
+    (   Char == '_'
+    ->  Var = _
+    ;   Var = Char
+    ).
+
+
+% This predicate can construct a list of slots from a puzzle which has been
+% processed.
+puzzlelist_to_slotslist(Puzzle, SlotsList) :-
+    rows_to_slots(Puzzle, SlotsList1),
+    transpose(Puzzle, Puzzle2),
+    rows_to_slots(Puzzle2, SlotsList2),
+    append(SlotsList1, SlotsList2, SlotsList).
+
+
+% This predicate can construct a list of slots from all rows of the puzzle.
+rows_to_slots([], []).
+rows_to_slots([Row|Rows], Slots) :-
+    row_to_slots(Row, [], Slots1),
+    rows_to_slots(Rows, Slots2),
+    append(Slots1, Slots2, Slots).
+
+
+% This predicate can construct a list of slots from a single row of the puzzle.
+% Only the slot whose length is more than 2 will be considered.
+row_to_slots([], CurrentSlot, Slots) :-
+    length(CurrentSlot, N),
+    (   N > 1
+    ->  Slots = [CurrentSlot]
+    ;   Slots = []
+    ).
+row_to_slots([Var|Vars], CurrentSlot, Slots) :-
+    (   Var \== '#'
+    ->  append(CurrentSlot, [Var], CurrentSlot1),
+        row_to_slots(Vars, CurrentSlot1, Slots)
+    ;   length(CurrentSlot, N),
+        (   N > 1
+        ->  Slots = [CurrentSlot|Slots1]
+        ;   Slots = Slots1
+        ),
+        row_to_slots(Vars, [], Slots1)
+    ).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                            Optimization Predicates                         %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% This predicate takes a SlotsList and a WordList, finds the best slot and fills
+% it. The filled slot then is removed from SlotsList and the word is removed from
+% the WordList. This process continues until both the SlotsList and the WordList
+% are empty.
+fillin([], []).
+fillin(SlotsList, WordList) :-
+    find_best(SlotsList, WordList, Best),
+    member(Best, WordList),
+    delete_elem(SlotsList, Best, SlotsList1),
+    delete_elem(WordList, Best, WordList1),
+    fillin(SlotsList1, WordList1).
+
+
+% This predicate takes a list of slots and a word list, and can find the best slot
+% which has the lowest matching number.
+find_best([Slot|Slots], WordList, Best) :-
+    slot_matching_number(Slot, WordList, 0, Result),
+    best_slot(Slots, WordList, Result, Slot, FinalBest),
+    Best = FinalBest.
+
+
+% This predicate takes a slot and a word list, and can return the matching number 
+% of the slot.
+slot_matching_number(_, [], CurrentNum, Result) :-
+    Result = CurrentNum.
+slot_matching_number(Slot, [Word|Words], CurrentNum, Result) :-
+    (   Slot \= Word
+    ->  CurrentNum1 = CurrentNum
+    ;   CurrentNum1 = CurrentNum + 1
+    ),
+    slot_matching_number(Slot, Words, CurrentNum1, Result).
+
+
+% This predicate can find the best slot which has the lowest matching number
+% from a list of slots.
+best_slot([], _, _, CurrentBest, FinalBest) :-
+    FinalBest = CurrentBest.
+best_slot([Slot|Slots], WordList, LowestNum, CurrentBest, FinalBest) :-
+    slot_matching_number(Slot, WordList, 0, Result),
+    (   Result < LowestNum
+    ->  LowestNum1 = Result,
+        CurrentBest1 = Slot
+    ;   LowestNum1 = LowestNum,
+        CurrentBest1 = CurrentBest
+    ),
+    best_slot(Slots, WordList, LowestNum1, CurrentBest1, FinalBest).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                              Helper Predicates                             %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% This predicate can ensure that the rows from a puzzle have the same length.
 valid_puzzle([]).
 valid_puzzle([Row|Rows]) :-
-	maplist(same_length(Row), Rows).
+    maplist(same_length(Row), Rows).
 
 
-
-% solve_puzzle takes a unfilled Puzzle in Matrix forms, WordList in List forms 
-% and output a filled solution in Solved 
-solve_puzzle(Puzzle, WordList, Solved):-
-	transform_puzzle(Puzzle, Solved),
-	transform_puzzle_to_list(Solved, List),
-	build_possible_words(List, WordList, WordLists),
-	sort_list_by_possible_list_size(List, WordLists, List1, WordLists1),
-	solve_puzzle_list(List1, WordLists1).
-
-
-% calls transform_array recursively to transform a puzzle matrix to 
-% a matrix with Variables
-transform_puzzle([], []).
-transform_puzzle([X|Xs], [Y|Ys]):-
-	transform_array(X, Y),
-	transform_puzzle(Xs, Ys).
-
-
-% transform an puzzle row into a row with Variables
-transform_array([], []).
-transform_array([X|Xs], [Y|Ys]):-
-	(X = '_' -> Y = _; Y = X),
-	transform_array(Xs, Ys).
-
-
-% construct all possible variable list given a puzzle
-transform_puzzle_to_list(Matrix, List):-
-	transform_puzzle_to_list_row(Matrix, List1),
-	transpose(Matrix, Matrix2),
-	transform_puzzle_to_list_row(Matrix2, List2),
-	append(List1, List2, List).
-
-
-% consruct all possible variable list given by only considering puzzle rows
-transform_puzzle_to_list_row([], []).
-transform_puzzle_to_list_row([X|Xs], Matrix):-
-	transform_puzzle_array(X, Y),
-	transform_puzzle_to_list_row(Xs, Matrix1),
-	append(Y, Matrix1, Matrix).
-
-
-% construct all possible variable list given a puzzle row
-transform_puzzle_array(Array, ArrayF):-
-	split_puzzle_array(Array, [], [], ArrayF).
-
-
-% construct a variable list given an array of puzzle row
-split_puzzle_array([], Array, X, ArrayF):-
-	((length(X, N), N > 1) ->
-		append(Array, [X], ArrayF)
-	; ArrayF = Array).
-
-% construct a variable list given a matrix of puzzle
-split_puzzle_array([Y|Ys], Array, X, ArrayF):-
-	(\+ var(Y), Y = # ->
-		((length(X, N), N > 1) -> 
-			append(Array, [X], ArrayT),
-			split_puzzle_array(Ys, ArrayT, [], ArrayF)
-		;	split_puzzle_array(Ys, Array, [], ArrayF))
-	;	append(X, [Y], X1),
-		split_puzzle_array(Ys, Array, X1, ArrayF)).
-
-
-% initial calculation that works out the possible word that could be 
-% filled in each slots
-build_possible_words([], _, []).
-build_possible_words([L|Ls], WordList, [T|Ts]):-
-	length(L, N),
-	filter_eq_length(WordList, T, N),
-	build_possible_words(Ls, WordList, Ts).
-
-
-filter_eq_length([], [], _).
-filter_eq_length([X|Xs], List, N):-
-	((length(X, N1), N1 =:= N) ->
-		List = [X|Ys],
-		filter_eq_length(Xs, Ys, N)
-	;	filter_eq_length(Xs, List, N)
-	).
-
-
-% sorts the list by size of possible word that could be filled in it.
-sort_list_by_possible_list_size([], [], [], []).
-sort_list_by_possible_list_size([L|Ls], [T|Ts], List, WordLists):-
-	length(T, N),
-	filter_list_by_le_length(Ls, Ts, Lse, Tse, N),
-	filter_list_by_me_length(Ls, Ts, Lsm, Tsm, N),
-	sort_list_by_possible_list_size(Lse, Tse, LseList, TseList),
-	sort_list_by_possible_list_size(Lsm, Tsm, LsmList, TsmList),
-	append(LseList, [L|LsmList], List),
-	append(TseList, [T|TsmList], WordLists).
-
-
-filter_list_by_le_length([], [], [], [], _).
-filter_list_by_le_length([L|Ls], [T|Ts], List, WordLists, N):-
-	((length(T, N1), N1 < N) -> 
-		List = [L|Ys],
-		WordLists = [T|Zs],
-		filter_list_by_le_length(Ls, Ts, Ys, Zs, N)
-	;	filter_list_by_le_length(Ls, Ts, List, WordLists, N)
-	).
-
-filter_list_by_me_length([], [], [], [], _).
-filter_list_by_me_length([L|Ls], [T|Ts], List, WordLists, N):-
-	((length(T, N1), N1 >= N) ->
-		List = [L|Ys],
-		WordLists = [T|Zs],
-		filter_list_by_me_length(Ls, Ts, Ys, Zs, N)
-	;	filter_list_by_me_length(Ls, Ts, List, WordLists, N)
-	).
-
-
-% solve_puzzle_list takes the puzzle in Variable List Form, and list of 
-% remaining wordlist, and solves the Puzzle
-solve_puzzle_list([], _).
-solve_puzzle_list(List, WordLists):-
-	rebuild_possible_words(List, WordLists, WordLists1),
-	sort_list_by_possible_list_size(List, WordLists, [L|Ls], [T|Ts]),
-	(length(T, N), N > 0 -> 
-		fill_slot(L, T, W),
-		filter_remain_list(Ts, W, Ys),
-		solve_puzzle_list(Ls, Ys)
-	).
-
-
-% recalulates the current words that could be filled in for each slot
-rebuild_possible_words([], [], []).
-rebuild_possible_words([L|Ls], [T|Ts], [Z|Zs]):-
-	filter_possible_list(T, L, Z),
-	rebuild_possible_words(Ls, Ts, Zs).
-
-
-% recalculates the current words that could be filled for the specified slot
-filter_possible_list([], _, []).
-filter_possible_list([Y|Ys], Slot, D):-
-	((\+ \+ Slot = Y) ->
-		D = [Y|Ds],
-		filter_possible_list(Ys, Slot, Ds)
-	;	filter_possible_list(Ys, Slot, D)
-	).
-
-
-% fill slot tries a slot with all possible word that could fill in it, and 
-% output the current filled word for the slot
-fill_slot(Slot, [Slot|_Slots], Slot).
-fill_slot(Slot, [_|Slots], RH):-
-	fill_slot(Slot, Slots, RH).
-
-
-% filter_remain_list takes a word to be filtered out of wordlist of each slot
-filter_remain_list([], _, []).
-filter_remain_list([T|Ts], W, [Y|Ys]):-
-	filter_first_instance(T, W, Y),
-	filter_remain_list(Ts, W, Ys).
-
-
-% filter_first_instance takes a word to be filtered out of all wordlist for a 
-% slot, and filters out the first occurance of the word in this wordlist
-filter_first_instance([], _, []).
-filter_first_instance([X|Ws], W, Y):-
-	(X == W ->
-		Y = Ws
-	; 	Y = [X|Ys],
-		filter_first_instance(Ws, W, Ys)
-	).
+% This predicate can delete an element from a list.
+delete_elem([], _, ResultList) :-
+    ResultList = [].
+delete_elem([X|Xs], Elem, ResultList) :-
+    (   X == Elem
+    ->  ResultList = Xs
+    ;   delete_elem(Xs, Elem, List),
+        ResultList = [X|List]
+    ).
