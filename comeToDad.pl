@@ -114,95 +114,21 @@ same_helper([E|L1], L2):-
     member(E, L2),
     same_helper(L1, L2).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+delete_elem([E|List], E, List).
+delete_elem([E1|List], E, [E1|List1]):-
+    delete_elem(List, E, List1).
+
+permutation([], []).
+permutation([E|List1], [E|List2]):-
+    permutation(List1, List2).
+permutation([E1|List1], [E2|List2]):-
+    delete_elem(List1, E2, NewList1),
+    delete_elem(List2, E1, NewList2),
+    permutation(NewList1, NewList2).
+
+newpermutation(L1, L2):-
+    msort(L1, Sorted),
+    msort(L2, Sorted).
 
 
 
